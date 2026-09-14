@@ -1,4 +1,5 @@
 import re
+import time
 from unittest.mock import patch
 
 import pytest
@@ -69,8 +70,10 @@ def test_destroy_cancels_animation_configure_and_tooltip_callbacks():
     assert chart._tooltip is None
 
     # Canceled callbacks must not fire after destruction.
-    root.after(50, root.quit)
-    root.mainloop()
+    deadline = time.monotonic() + 0.2
+    while time.monotonic() < deadline:
+        root.update()
+        time.sleep(0.005)
     root.destroy()
 
 
@@ -97,8 +100,10 @@ def test_rapid_updates_cancel_previous_animation():
     assert third_id is not None
     assert third_id != second_id
 
-    root.after(50, root.quit)
-    root.mainloop()
+    deadline = time.monotonic() + 0.2
+    while time.monotonic() < deadline:
+        root.update()
+        time.sleep(0.005)
     assert chart._progress < 1.0
 
     chart.destroy()
@@ -120,8 +125,10 @@ def test_rapid_update_to_non_animated_data_finishes_cleanly():
     assert chart._animation_after_id is None
     assert chart._progress == 1.0
 
-    root.after(50, root.quit)
-    root.mainloop()
+    deadline = time.monotonic() + 0.2
+    while time.monotonic() < deadline:
+        root.update()
+        time.sleep(0.005)
     assert chart._progress == 1.0
 
     chart.destroy()

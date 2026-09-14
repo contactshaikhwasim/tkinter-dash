@@ -95,8 +95,10 @@ def test_multiple_updates_keep_only_one_animation_callback():
         for value in range(10, 110, 10):
             chart.update({"A": value, "B": value + 1}, animate=True)
         assert chart._animation_after_id is not None
-        root.after(60, root.quit)
-        root.mainloop()
+        deadline = time.monotonic() + 0.2
+        while time.monotonic() < deadline:
+            root.update()
+            time.sleep(0.005)
         assert chart._animation_after_id is not None or chart._progress == 1.0
         chart.destroy()
     finally:

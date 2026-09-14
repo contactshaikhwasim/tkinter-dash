@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tkinter-dash"
-version = "0.1.4"
+version = "0.1.5"
 description = "Lightweight native dashboard and visualization widgets for Tkinter"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
-authors = [{name = "Wasim Shaikh"}]
+authors = [{name = "Wasim Shaikh", email = "contact.shaikh.wasim@gmail.com"}]
 keywords = ["tkinter", "dashboard", "charts", "visualization", "customtkinter"]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -20,6 +20,11 @@ classifiers = [
   "Topic :: Software Development :: Libraries",
   "Topic :: Scientific/Engineering :: Visualization",
 ]
+
+[project.urls]
+Homepage = "https://github.com/contactshaikhwasim/tkinter-dash"
+Repository = "https://github.com/contactshaikhwasim/tkinter-dash"
+Issues = "https://github.com/contactshaikhwasim/tkinter-dash/issues"
 
 [tool.setuptools.packages.find]
 include = ["tkinter_dash*"]

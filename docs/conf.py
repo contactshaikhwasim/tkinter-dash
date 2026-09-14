@@ -4,7 +4,7 @@ import sys
 sys.path.insert(0, os.path.abspath(".."))
 
 project = "tkinter-dash"
-author = "Wasim Shaikh"
+author = "tkinter-dash contributors"
 release = "0.1.4"
 version = release
 

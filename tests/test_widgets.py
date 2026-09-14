@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -18,27 +19,29 @@ def test_all_widgets_create_resize_update():
     from tkinter_dash import BarChart, DonutChart, LineChart, PieChart, ScatterChart
 
     root = tk.Tk()
-    root.geometry("700x500")
-    root.update_idletasks()
-
-    widgets = [
-        LineChart(root, {"A": 10, "B": 20, "C": 15}, animate=False),
-        BarChart(root, {"A": 10, "B": 20, "C": 15}, animate=False),
-        ScatterChart(root, {"A": 10, "B": 20, "C": 15}, animate=False),
-        PieChart(root, {"A": 40, "B": 30, "C": 30}, animate=False),
-        DonutChart(root, {"A": 40, "B": 30, "C": 30}, animate=False),
-    ]
-    for widget in widgets:
-        widget.configure(width=500, height=350)
-        widget.pack(fill="both", expand=True)
+    try:
+        root.geometry("700x500")
         root.update_idletasks()
-        root.update()
-        assert int(widget.cget("width")) == 500
-        widget.set_data({"A": 5, "B": 12, "C": 8}, animate=False)
-        root.update()
-        widget.event_generate("<Configure>")
-        root.update()
-    root.destroy()
+
+        widgets = [
+            LineChart(root, {"A": 10, "B": 20, "C": 15}, animate=False),
+            BarChart(root, {"A": 10, "B": 20, "C": 15}, animate=False),
+            ScatterChart(root, {"A": 10, "B": 20, "C": 15}, animate=False),
+            PieChart(root, {"A": 40, "B": 30, "C": 30}, animate=False),
+            DonutChart(root, {"A": 40, "B": 30, "C": 30}, animate=False),
+        ]
+        for widget in widgets:
+            widget.configure(width=500, height=350)
+            widget.pack(fill="both", expand=True)
+            root.update_idletasks()
+            root.update()
+            assert int(widget.cget("width")) == 500
+            widget.set_data({"A": 5, "B": 12, "C": 8}, animate=False)
+            root.update()
+            widget.event_generate("<Configure>")
+            root.update()
+    finally:
+        root.destroy()
 
 
 def test_click_event_and_hover_tooltip():
@@ -134,14 +137,10 @@ def test_animation_advances_and_finishes():
     root.update_idletasks()
     start = chart._progress
 
-    def stop_when_finished(deadline_ms=500):
-        if chart._progress >= 1.0 or deadline_ms <= 0:
-            root.quit()
-            return
-        root.after(10, lambda: stop_when_finished(deadline_ms - 10))
-
-    root.after(10, stop_when_finished)
-    root.mainloop()
+    deadline = time.monotonic() + 0.5
+    while chart._progress < 1.0 and time.monotonic() < deadline:
+        root.update()
+        time.sleep(0.005)
     assert start == 0.0
     assert chart._progress == 1.0
     chart.destroy()

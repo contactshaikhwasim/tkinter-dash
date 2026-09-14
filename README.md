@@ -1,6 +1,6 @@
 # tkinter-dash
 
-[![CI](https://github.com/contactshaikhwasim/tkinter-dash/actions/workflows/ci.yml/badge.svg)](https://github.com/contactshaikhwasim/tkinter-dash/actions/workflows/ci.yml)
+[![CI](https://github.com/your-org/tkinter-dash/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/tkinter-dash/actions/workflows/ci.yml)
 [![Documentation](https://readthedocs.org/projects/tkinter-dash/badge/?version=latest)](https://tkinter-dash.readthedocs.io/en/latest/)
 [![PyPI](https://img.shields.io/pypi/v/tkinter-dash.svg)](https://pypi.org/project/tkinter-dash/)
 [![Python](https://img.shields.io/pypi/pyversions/tkinter-dash.svg)](https://pypi.org/project/tkinter-dash/)
