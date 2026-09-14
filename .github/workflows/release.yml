@@ -104,5 +104,6 @@ jobs:
           NOTES
           gh release create "${GITHUB_REF_NAME}" \
             dist/*.whl dist/*.tar.gz \
+            --repo "${{ github.repository }}" \
             --title "tkinter-dash ${GITHUB_REF_NAME}" \
             --notes-file release-notes.md
