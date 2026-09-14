@@ -5,6 +5,15 @@ name: CI
 on:
   push:
   pull_request:
+  # Manual "Run workflow" from the Actions tab. Tick `publish` to upload the
+  # built distributions to PyPI (handy for a version whose tag already exists,
+  # e.g. v0.1.5).
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Upload the built distributions to PyPI"
+        type: boolean
+        default: false
 
 # Least privilege by default; the `release` job opts into `contents: write`.
 permissions:
@@ -102,8 +111,38 @@ jobs:
           pip install --upgrade tkinter-dash
           ```
           NOTES
-          gh release create "${GITHUB_REF_NAME}" \
-            dist/*.whl dist/*.tar.gz \
-            --repo "${{ github.repository }}" \
-            --title "tkinter-dash ${GITHUB_REF_NAME}" \
-            --notes-file release-notes.md
+          if gh release view "${GITHUB_REF_NAME}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release ${GITHUB_REF_NAME} already exists; refreshing its assets."
+            gh release upload "${GITHUB_REF_NAME}" dist/*.whl dist/*.tar.gz \
+              --repo "${{ github.repository }}" \
+              --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" \
+              dist/*.whl dist/*.tar.gz \
+              --repo "${{ github.repository }}" \
+              --title "tkinter-dash ${GITHUB_REF_NAME}" \
+              --notes-file release-notes.md
+          fi
+
+  # ---------------------------------------------------------------------------
+  # PyPI via trusted publishing (OIDC, no API token).
+  # The GitHub environment name MUST stay `pypi` and this job MUST stay in
+  # .github/workflows/release.yml, because that is exactly what the publisher
+  # registered on PyPI expects.
+  # ---------------------------------------------------------------------------
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish == true)
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/tkinter-dash
+    permissions:
+      id-token: write  # required for trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: dist/
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
