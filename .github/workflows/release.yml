@@ -1,100 +1,190 @@
-# Builds the sdist + wheel on every push/PR and creates a GitHub Release
-# (with the built distributions attached) when a `v*` tag is pushed.
-name: CI
+# Builds, tests, creates GitHub Releases, and publishes tkinter-dash to PyPI.
+# PyPI publishing uses Trusted Publishing (OIDC) — no API token required.
+
+name: Release
 
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Upload the built distributions to PyPI"
+        type: boolean
+        required: true
+        default: false
 
-# Least privilege by default; the `release` job opts into `contents: write`.
+# Least privilege by default.
 permissions:
   contents: read
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # TEMPORARILY DISABLED while the test suite is being reworked.
-  # To re-enable: uncomment the `test` job below and restore `needs: test`
-  # on the `build` job.
-  # ---------------------------------------------------------------------------
-  # test:
-  #   timeout-minutes: 5
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       os: [ubuntu-latest, windows-latest, macos-latest]
-  #       python-version: ["3.9", "3.12", "3.13"]
-  #   runs-on: ${{ matrix.os }}
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-python@v5
-  #       with:
-  #         python-version: ${{ matrix.python-version }}
-  #     - name: Install Tk dependencies (Ubuntu)
-  #       if: runner.os == 'Linux'
-  #       run: |
-  #         sudo apt-get update
-  #         sudo apt-get install -y python3-tk xvfb
-  #     - name: Install package and test dependencies
-  #       run: |
-  #         python -m pip install --upgrade pip
-  #         python -m pip install -e ".[test]"
-  #     - name: Run tests (Linux/Xvfb)
-  #       if: runner.os == 'Linux'
-  #       run: xvfb-run -a python -m pytest -q
-  #     - name: Run tests (Windows/macOS)
-  #       if: runner.os != 'Linux'
-  #       run: python -m pytest -q
 
-  build:
-    runs-on: ubuntu-latest
-    # needs: test  # re-enable together with the `test` job above
+  # ---------------------------------------------------------------------------
+  # TEST
+  #
+  # GUI tests run under Xvfb on Linux.
+  # Every test job has a hard timeout so a Tkinter/event-loop regression
+  # cannot leave GitHub Actions hanging indefinitely.
+  # ---------------------------------------------------------------------------
+  test:
+    name: Test ${{ matrix.os }} / Python ${{ matrix.python-version }}
+
+    timeout-minutes: 5
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: "3.9"
+
+          - os: ubuntu-latest
+            python-version: "3.12"
+
+          - os: ubuntu-latest
+            python-version: "3.13"
+
+          - os: windows-latest
+            python-version: "3.12"
+
+          - os: macos-latest
+            python-version: "3.12"
+
+    runs-on: ${{ matrix.os }}
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # Tkinter is provided by the Python installation on Windows/macOS.
+      # Ubuntu needs the Tk package explicitly.
+      - name: Install Tk dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk xvfb
+
+      - name: Install package and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[test]"
+          python -m pip install pytest-timeout
+
+      # Linux GUI tests need a virtual X display.
+      - name: Run tests (Linux/Xvfb)
+        if: runner.os == 'Linux'
+        env:
+          TKINTER_DASH_SMOKE: "1"
+        run: |
+          xvfb-run -a python -m pytest -q --timeout=60
+
+      # Windows/macOS have a native desktop environment.
+      - name: Run tests (Windows/macOS)
+        if: runner.os != 'Linux'
+        env:
+          TKINTER_DASH_SMOKE: "1"
+        run: |
+          python -m pytest -q --timeout=60
+
+
+  # ---------------------------------------------------------------------------
+  # BUILD
+  #
+  # Only build after the complete test matrix passes.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build package
+
+    needs: test
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 10
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Build distributions
         run: |
           python -m pip install --upgrade pip build twine
           python -m build
           python -m twine check dist/*
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: distributions
+          path: dist/
+          if-no-files-found: error
+
+
+  # ---------------------------------------------------------------------------
+  # GITHUB RELEASE
+  #
+  # Runs only when a version tag is pushed:
+  #
+  #     git tag v0.1.5
+  #     git push origin v0.1.5
+  #
+  # The distributions generated by the build job are attached to the release.
+  # ---------------------------------------------------------------------------
+  release:
+    name: Create GitHub Release
+
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    needs: build
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 10
+
+    permissions:
+      contents: write
+
+    steps:
+
+      - name: Download distributions
+        uses: actions/download-artifact@v4
         with:
           name: distributions
           path: dist/
 
-  # ---------------------------------------------------------------------------
-  # GitHub Release: runs only for `v*` tags, e.g. `git tag v0.1.5 && git push
-  # origin v0.1.5`. Reuses the distributions produced by the `build` job.
-  # ---------------------------------------------------------------------------
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: distributions
-          path: dist/
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+
         run: |
+
           cat > release-notes.md <<'NOTES'
           ### tkinter-dash ${{ github.ref_name }}
 
-          Packaging, documentation and release-infrastructure release. No breaking API changes.
+          Packaging, documentation and release-infrastructure release.
+          No breaking API changes.
 
           #### Highlights
 
-          - Added the MIT `LICENSE` file to the wheel and source distribution.
-          - Richer PyPI metadata: author email and Homepage / Repository / Issues URLs.
-          - Consolidated CI into a single workflow that builds the sdist + wheel, runs
-            `twine check`, and attaches both to this release on every `v*` tag.
-          - Fixed the theme-toggle example to use the documented `configure_theme()` API.
-          - Fixed the CI badge URL.
+          - Native Tkinter dashboard and visualization widgets.
+          - MIT licensed package.
+          - PyPI metadata includes author and project URLs.
+          - CI validates the package before release.
+          - Builds both wheel and source distribution.
+          - PyPI publishing uses Trusted Publishing (OIDC).
+          - Theme-toggle example uses the documented `configure_theme()` API.
 
           #### Install
 
@@ -102,17 +192,89 @@ jobs:
           pip install --upgrade tkinter-dash
           ```
           NOTES
-          if gh release view "${GITHUB_REF_NAME}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            echo "Release ${GITHUB_REF_NAME} already exists; refreshing its assets."
-            gh release upload "${GITHUB_REF_NAME}" dist/*.whl dist/*.tar.gz \
+
+          if gh release view "${GITHUB_REF_NAME}" \
+            --repo "${{ github.repository }}" >/dev/null 2>&1; then
+
+            echo "Release ${GITHUB_REF_NAME} already exists."
+            echo "Refreshing release assets."
+
+            gh release upload \
+              "${GITHUB_REF_NAME}" \
+              dist/*.whl \
+              dist/*.tar.gz \
               --repo "${{ github.repository }}" \
               --clobber
+
           else
-            gh release create "${GITHUB_REF_NAME}" \
-              dist/*.whl dist/*.tar.gz \
+
+            echo "Creating GitHub Release ${GITHUB_REF_NAME}."
+
+            gh release create \
+              "${GITHUB_REF_NAME}" \
+              dist/*.whl \
+              dist/*.tar.gz \
               --repo "${{ github.repository }}" \
               --title "tkinter-dash ${GITHUB_REF_NAME}" \
               --notes-file release-notes.md
+
           fi
 
-  # PyPI publishing lives in .github/workflows/python-publish.yml
+
+  # ---------------------------------------------------------------------------
+  # PYPI
+  #
+  # Uses PyPI Trusted Publishing / GitHub OIDC.
+  #
+  # IMPORTANT:
+  #
+  # PyPI Trusted Publisher must be configured as:
+  #
+  #   Owner:       contactshaikhwasim
+  #   Repository:  tkinter-dash
+  #   Workflow:    release.yml
+  #   Environment: pypi
+  #
+  # No PYPI_API_TOKEN is required.
+  # ---------------------------------------------------------------------------
+  publish:
+    name: Publish to PyPI
+
+    if: >
+      startsWith(github.ref, 'refs/tags/v')
+      ||
+      (
+        github.event_name == 'workflow_dispatch'
+        &&
+        inputs.publish == true
+      )
+
+    needs: build
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 10
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/tkinter-dash
+
+    permissions:
+      id-token: write
+
+    steps:
+
+      - name: Download distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: dist/
+
+      - name: Verify distributions
+        run: |
+          ls -lah dist/
+          python -m pip install --upgrade twine
+          python -m twine check dist/*
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
