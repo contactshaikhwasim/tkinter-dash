@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tkinter-dash"
+version = "0.1.4"
+description = "Lightweight native dashboard and visualization widgets for Tkinter"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [{name = "tkinter-dash contributors"}]
+keywords = ["tkinter", "dashboard", "charts", "visualization", "customtkinter"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Scientific/Engineering :: Visualization",
+]
+
+[tool.setuptools.packages.find]
+include = ["tkinter_dash*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[project.optional-dependencies]
+test = ["pytest", "pandas"]
