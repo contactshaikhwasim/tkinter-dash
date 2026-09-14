@@ -9,7 +9,7 @@ description = "Lightweight native dashboard and visualization widgets for Tkinte
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
-authors = [{name = "tkinter-dash contributors"}]
+authors = [{name = "Wasim Shaikh"}]
 keywords = ["tkinter", "dashboard", "charts", "visualization", "customtkinter"]
 classifiers = [
   "Development Status :: 3 - Alpha",
