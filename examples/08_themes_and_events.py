@@ -26,7 +26,7 @@ chart.bind(
 )
 
 def toggle_theme():
-    chart.configure(theme="light" if chart.theme.background != "#FFFFFF" else "dark")
+    chart.configure_theme("light" if chart.theme.background != "#FFFFFF" else "dark")
 
 button = tk.Button(root, text="Toggle Theme", command=toggle_theme)
 button.pack(pady=(0, 16))

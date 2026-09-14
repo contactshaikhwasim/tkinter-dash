@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.abspath(".."))
 
 project = "tkinter-dash"
 author = "tkinter-dash contributors"
-release = "0.1.4"
+release = "0.1.5"
 version = release
 
 extensions = [

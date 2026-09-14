@@ -1,6 +1,6 @@
 # tkinter-dash
 
-[![CI](https://github.com/contactshaikhwasim/tkinter-dash/actions/workflows/ci.yml/badge.svg)](https://github.com/contactshaikhwasim/tkinter-dash/actions/workflows/ci.yml)
+[![CI](https://github.com/contactshaikhwasim/tkinter-dash/actions/workflows/release.yml/badge.svg)](https://github.com/contactshaikhwasim/tkinter-dash/actions/workflows/release.yml)
 [![Documentation](https://readthedocs.org/projects/tkinter-dash/badge/?version=latest)](https://tkinter-dash.readthedocs.io/en/latest/)
 [![PyPI](https://img.shields.io/pypi/v/tkinter-dash.svg)](https://pypi.org/project/tkinter-dash/)
 [![Python](https://img.shields.io/pypi/pyversions/tkinter-dash.svg)](https://pypi.org/project/tkinter-dash/)
@@ -9,7 +9,7 @@
 
 `tkinter-dash` is a lightweight Canvas-based visualization library designed for Python desktop applications. It focuses on a simple, native Tkinter API so you can add charts to an existing Tkinter or CustomTkinter application without introducing a web UI, Matplotlib, Seaborn, Plotly, or a separate dashboard framework.
 
-> **Status:** Alpha (`0.1.4`). The API is usable, but compatibility and visualization behavior may evolve before `1.0`.
+> **Status:** Alpha (`0.1.5`). The API is usable, but compatibility and visualization behavior may evolve before `1.0`.
 
 ## Why tkinter-dash?
 
