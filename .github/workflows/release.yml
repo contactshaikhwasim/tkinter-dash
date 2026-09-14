@@ -6,13 +6,6 @@ name: Release
 on:
   push:
   pull_request:
-  workflow_dispatch:
-    inputs:
-      publish:
-        description: "Upload the built distributions to PyPI"
-        type: boolean
-        required: true
-        default: false
 
 # Least privilege by default.
 permissions:
@@ -34,6 +27,7 @@ jobs:
 
     strategy:
       fail-fast: false
+
       matrix:
         include:
           - os: ubuntu-latest
@@ -45,6 +39,7 @@ jobs:
           - os: ubuntu-latest
             python-version: "3.13"
 
+          # Intentionally disabled.
           # - os: windows-latest
           #   python-version: "3.12"
 
@@ -63,7 +58,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      # Tkinter is provided by the Python installation on Windows/macOS.
+      # Tkinter is provided by the Python installation on macOS.
       # Ubuntu needs the Tk package explicitly.
       - name: Install Tk dependencies (Ubuntu)
         if: runner.os == 'Linux'
@@ -86,6 +81,7 @@ jobs:
           xvfb-run -a python -m pytest -q --timeout=60
 
       # Windows/macOS have a native desktop environment.
+      # Intentionally disabled together with the Windows matrix.
       # - name: Run tests (Windows/macOS)
       #   if: runner.os != 'Linux'
       #   env:
@@ -118,9 +114,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build twine
+
       - name: Build distributions
         run: |
-          python -m pip install --upgrade pip build twine
           python -m build
           python -m twine check dist/*
 
@@ -133,9 +133,94 @@ jobs:
 
 
   # ---------------------------------------------------------------------------
+  # VERIFY RELEASE VERSION
+  #
+  # Ensures:
+  #
+  #     Git tag:        v0.1.5
+  #     package version: 0.1.5
+  #
+  # must match before anything is published.
+  #
+  # This job only runs for version tags.
+  # ---------------------------------------------------------------------------
+  verify-version:
+    name: Verify release version
+
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    needs: build
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 5
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package metadata tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install packaging
+
+      - name: Verify tag matches package version
+        env:
+          TAG_VERSION: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import os
+          import pathlib
+          import re
+          import sys
+
+          tag = os.environ["TAG_VERSION"]
+
+          if not tag.startswith("v"):
+              print(f"ERROR: Invalid release tag: {tag}")
+              sys.exit(1)
+
+          tag_version = tag[1:]
+
+          pyproject = pathlib.Path("pyproject.toml").read_text(
+              encoding="utf-8"
+          )
+
+          match = re.search(
+              r'(?m)^\s*version\s*=\s*["\']([^"\']+)["\']',
+              pyproject,
+          )
+
+          if not match:
+              print("ERROR: Could not find package version in pyproject.toml")
+              sys.exit(1)
+
+          package_version = match.group(1)
+
+          print(f"Git tag version:   {tag_version}")
+          print(f"Package version:   {package_version}")
+
+          if tag_version != package_version:
+              print()
+              print("ERROR: Git tag and package version do not match.")
+              print(f"Expected tag: v{package_version}")
+              sys.exit(1)
+
+          print()
+          print("Version check passed.")
+          PY
+
+
+  # ---------------------------------------------------------------------------
   # GITHUB RELEASE
   #
-  # Runs only when a version tag is pushed:
+  # Runs automatically when a version tag is pushed:
   #
   #     git tag v0.1.5
   #     git push origin v0.1.5
@@ -147,7 +232,9 @@ jobs:
 
     if: startsWith(github.ref, 'refs/tags/v')
 
-    needs: build
+    needs:
+      - build
+      - verify-version
 
     runs-on: ubuntu-latest
 
@@ -240,16 +327,11 @@ jobs:
   publish:
     name: Publish to PyPI
 
-    if: >
-      startsWith(github.ref, 'refs/tags/v')
-      ||
-      (
-        github.event_name == 'workflow_dispatch'
-        &&
-        inputs.publish == true
-      )
+    if: startsWith(github.ref, 'refs/tags/v')
 
-    needs: build
+    needs:
+      - build
+      - verify-version
 
     runs-on: ubuntu-latest
 
