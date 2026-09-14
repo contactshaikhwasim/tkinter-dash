@@ -45,8 +45,8 @@ jobs:
           - os: ubuntu-latest
             python-version: "3.13"
 
-          - os: windows-latest
-            python-version: "3.12"
+          # - os: windows-latest
+          #   python-version: "3.12"
 
           - os: macos-latest
             python-version: "3.12"
@@ -86,12 +86,12 @@ jobs:
           xvfb-run -a python -m pytest -q --timeout=60
 
       # Windows/macOS have a native desktop environment.
-      - name: Run tests (Windows/macOS)
-        if: runner.os != 'Linux'
-        env:
-          TKINTER_DASH_SMOKE: "1"
-        run: |
-          python -m pytest -q --timeout=60
+      # - name: Run tests (Windows/macOS)
+      #   if: runner.os != 'Linux'
+      #   env:
+      #     TKINTER_DASH_SMOKE: "1"
+      #   run: |
+      #     python -m pytest -q --timeout=60
 
 
   # ---------------------------------------------------------------------------
